@@ -1,0 +1,5 @@
+
+message("CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
+message("INCLUDE_DIR: ${INCLUDE_DIR}")
+

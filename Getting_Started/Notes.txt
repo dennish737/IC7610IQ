@@ -1,0 +1,107 @@
+
+gtest
+pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-gtest # or other test frameworks
+
+python 
+export PYTHONPATH=/ucrt64/lib/python3.12/site-packages:$PYTHONPATH
+export PATH=/ucrt64/bin:$PATH
+
+
+create build file
+
+cmake -G "MSYS Makefiles" ..
+cmake -G "MinGW Makefiles" ..
+
+adding debug symbols to build: add flage -DCMAKE_BUILD_TYPE=Debug
+example: cmake -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+mkdir build
+
+
+cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=$MINGW_PREFIX ..
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$MINGW_PREFIX ..
+
+gdb SigMF.exe 
+run -t CF32 cf32_samples.data
+
+cmake -S . 
+# or if you installed mingw-w64-ucrt-x86_64-ninja:
+# cmake -G Ninja ..
+
+Make project
+make 
+# or ninja
+
+for rtl-sdr
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/ucrt64 ..
+ninja
+
+cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/ucrt64 ..
+cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/ucrt64 -D_POSIX_C_SOURCE=200112L ..
+
+Compile individual sources
+$ g++ -c -I ../include ../IcomCIVPort.cpp
+$ g++ -c -I ../include ../IcomIQPort.cpp
+$ g++ -c -I ../include ../IC7610SDR_Registration.cpp
+$ g++ -c -I ../include ../IC7610SDR_Settings.cpp
+$ g++ -c -I ../include ../IC7610SDR_Streaming.cpp
+
+Test project
+g++ EnumerateDevices.cpp -o EnumerateDevices.exe -lSoapySDR
+./EnumerateDevices.exe
+g++ API_test.cpp -o API_test.exe -lSoapySDR
+./API_test.exe
+g++ Frequency_test.cpp -o Frequency_test.exe -lSoapySDR
+./Frequency_test.exe
+
+$ g++ usb_civ_test.cpp -o usb_civ_test -lserialport
+
+CIV and IQ port test
+g++ -I../include CIVPort_test.cpp ../IcomCIVPort.cpp -o CIVPort_test.exe -lserialport 
+./CIVPort_test.exe
+
+g++ -I../include IQPort_test.cpp ../IcomIQPort.cpp -o IQPort_test.exe -L /c/msys64/ucrt64/lib/SoapySDR/modules0.8 -lftd3xx 
+./IQPort_test.exe
+
+
+
+
+S meter to dbm
+To find a signal's dBm: Tune to the signal, note its S-meter reading, and calculate: S-Meter Reading (dBm) = -73 dBm 
+(for S9) + (S-units above/below S9) * 3 dB.
+Example: A signal reading S-9+20 dB is -73 dBm + (20 * 3 dB) = -73 dBm + 60 dB = -13 dBm (Wait, this is wrong! Check the math).
+Corrected Example: S9 = -73 dBm. S9+10 = -63 dBm. S9+20 = -53 dBm. S9-10 = -83 dBm. S9-20 = -93 dBm. 
+
+An S-meter to dBm conversion chart shows that S9 typically equals -73 dBm (or 50 µV/50Ω) on HF, with each S-unit representing a 6 dB change, so S9+10 is -63 dBm, S8 is -79 dBm, and S1 is -121 dBm, though actual readings vary by radio. A standard chart maps S-units (S1-S9+) to specific dBm values, using a 6 dB step for each S-unit (e.g., S9+10 is 10 dB stronger than S9). 
+Standard S-Meter to dBm Chart (HF, 50 Ohm) 
+S-Reading 	dBm (approx.)	Voltage (50Ω)
+S9+40	-33 dBm	5.0 mV
+S9+30	-43 dBm	1.6 mV
+S9+20	-53 dBm	0.50 mV
+S9+10	-63 dBm	0.16 mV
+S9	-73 dBm	50 µV
+S8	-79 dBm	25 µV
+S7	-85 dBm	12.6 µV
+S6	-91 dBm	6.3 µV
+S5	-97 dBm	3.2 µV
+S4	-103 dBm	1.6 µV
+S3	-109 dBm	800 nV
+S2	-115 dBm	400 nV
+S1	-121 dBm	200 nV
+S0	-127 dBm	100 nV
+Source: hamwaves.com, gqrp.com/Smeter.pdf. 
+Key Conversion Points
+S9 as Reference: S9 is the standard reference point for HF, typically set at -73 dBm (or 50 microvolts).
+6 dB per S-Unit: Each increase of one S-unit (e.g., from S8 to S9) signifies a 6 dB increase in signal strength, which is a power increase by a factor of four (or doubling the voltage).
+dB over S9: For signals stronger than S9, you add dB values (e.g., S9+20 means 20 dB stronger than S9, or -53 dBm).
+VHF/UHF: The S9 level is different for VHF/UHF (above 30 MHz), where S9 is defined as -93 dBm (5 µV). 
+How to Use the Chart
+Find S9: Locate S9 on your meter and note its dBm value (-73 dBm for HF).
+Count Up/Down: For S8, go down 6 dB to -79 dBm; for S9+10, go up 10 dB to -63 dBm.
+Adjust for Your Radio: Recognize that your radio's S-meter is usually relative; the chart provides the standard, but actual readings can vary. 
+
+
+
+
+
+
+

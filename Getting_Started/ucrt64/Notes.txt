@@ -1,0 +1,327 @@
+
+gtest
+pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-gtest # or other test frameworks
+
+python 
+export PYTHONPATH=/ucrt64/lib/python3.12/site-packages:$PYTHONPATH
+export PATH=/ucrt64/bin:$PATH
+
+
+create build file
+
+cmake -G "MSYS Makefiles" ..
+cmake -G "MinGW Makefiles" ..
+
+adding debug symbols to build: add flage -DCMAKE_BUILD_TYPE=Debug
+example: cmake -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+
+gdb SigMF.exe 
+run -t CF32 cf32_samples.data
+
+cmake -S . 
+# or if you installed mingw-w64-ucrt-x86_64-ninja:
+# cmake -G Ninja ..
+
+Make project
+make 
+# or ninja
+
+for rtl-sdr
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/ucrt64 ..
+ninja
+
+cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/ucrt64 ..
+cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=/ucrt64 -D_POSIX_C_SOURCE=200112L ..
+
+Compile individual sources
+$ g++ -c -I ../include ../IcomCIVPort.cpp
+$ g++ -c -I ../include ../IcomIQPort.cpp
+$ g++ -c -I ../include ../IC7610SDR_Registration.cpp
+$ g++ -c -I ../include ../IC7610SDR_Settings.cpp
+$ g++ -c -I ../include ../IC7610SDR_Streaming.cpp
+
+Test project
+g++ EnumerateDevices.cpp -o EnumerateDevices.exe -lSoapySDR
+./EnumerateDevices.exe
+g++ API_test.cpp -o API_test.exe -lSoapySDR
+./API_test.exe
+g++ Frequency_test.cpp -o Frequency_test.exe -lSoapySDR
+./Frequency_test.exe
+
+$ g++ usb_civ_test.cpp -o usb_civ_test -lserialport
+
+CIV and IQ port test
+g++ -I../include CIVPort_test.cpp ../IcomCIVPort.cpp -o CIVPort_test.exe -lserialport 
+./CIVPort_test.exe
+
+g++ -I../include IQPort_test.cpp ../IcomIQPort.cpp -o IQPort_test.exe -L /c/msys64/ucrt64/lib/SoapySDR/modules0.8 -lftd3xx 
+./IQPort_test.exe
+
+
+
+Move soapy package from build to target location
+cp libIC7610SDRSupport.dll /c/msys64/ucrt64/lib/SoapySDR/modules0.8
+
+cp libIC7610SDRSupport.dll /ucrt64/lib/SoapySDR/modules0.8
+
+
+# Find the Google Test package (installed via pacman)
+find_package(GTest REQUIRED)
+
+# Add an executable for your tests
+add_executable(mytest test_mylib.cpp)
+
+# Link the test executable with GTest and your library
+target_link_libraries(mytest PRIVATE GTest::GTest GTest::Main mylib)
+
+# Automatically discover and add tests using the GTest module
+# This command registers each test found within 'mytest' with CTest
+gtest_discover_tests(mytest)
+
+Msys2 ucrt64 install
+https://github.com/msys2/msys2-installer/releases/download/2025-08-30/msys2-x86_64-20250830.exe 
+
+pacman
+
+Updating:
+pacman -Syu: Synchronizes package databases and updates all installed packages. 
+		     If core packages are updated, you may be prompted to close and reopen the 
+		     terminal to complete the update.
+		
+Installation:
+pacman -S <package_name>: Installs a specific package. For UCRT64, ensure you are 
+		                  installing the UCRT-specific version 
+						  (e.g., mingw-w64-ucrt-x86_64-gcc).
+pacman -U <package_file.tar.zst>: Installs a package from a local file.
+
+Searching:
+pacman -Ss <keyword>: Searches for packages containing the specified keyword in 
+					  their name or description.
+pacman -Qs <keyword>: Searches for installed packages containing the specified keyword.
+
+Removal:
+pacman -R <package_name>: Removes a specific package.
+pacman -Rsc <package_name>: Removes a package and its dependencies that are no 
+						    longer required by other installed packages. Use with caution.
+Information:
+pacman -Qi <package_name>: Displays detailed information about an installed package.
+pacman -Si <package_name>: Displays detailed information about a package available 
+						   in the repositories.
+pacman -Ql <package_name>: Lists all files owned by an installed package.
+
+Maintenance:
+pacman -Sc: Cleans the package cache, removing old versions of packages.
+pacman -Scc: Cleans the entire package cache, removing all stored packages.
+
+msys2 ucrt64 packages:
+https://packages.msys2.org/packages/?repo=ucrt64
+
+
+pacman -S mingw-w64-ucrt-x86_64-gcc
+
+pacman -S mingw-w64-ucrt-x86_64-boost
+pacman -S mingw-w64-ucrt-x86_64-boost-libs
+pacman -S mingw-w64-ucrt-x86_64-spdlog
+pacman -S mingw-w64-ucrt-x86_64-soapyrtlsdr
+pacman -S mingw-w64-ucrt-x86_64-gr-osmosdr
+
+
+driver=SoapyIC7610SDR,port=COM4
+
+
+Cmake
+To implement installation rules in CMake, you use the install() command within your CMakeLists.txt files to specify which targets, files, or directories should be copied to the installation prefix when the install command is run. 
+1. Defining Installation Rules in CMakeLists.txt
+The install() command has different signatures for different types of artifacts: 
+Installing Targets (Executables and Libraries) 
+This is the most common form for built software. CMake automatically handles associated build dependencies. 
+For an executable:
+cmake
+project(MyProject)
+add_executable(myexe main.cpp)
+install(TARGETS myexe DESTINATION bin)
+This command will install the myexe executable into the bin subdirectory of the installation prefix (e.g., /usr/local/bin on Linux, or C:\Program Files\MyProject\bin on Windows).
+For a library:
+cmake
+add_library(mylib SHARED mylib.cpp)
+install(TARGETS mylib DESTINATION lib)
+This will install the library file (e.g., libmylib.so or mylib.dll) to the lib directory. 
+Installing Files (Headers, Scripts, Configs)
+Use the FILES form for individual files, such as header files or documentation. 
+cmake
+install(FILES myheader.h DESTINATION include/myproject)
+This places myheader.h in include/myproject within the install prefix. 
+Installing Directories
+Use the DIRECTORY form to install a hierarchy of files. A trailing slash in the source path is important: 
+cmake
+# Installs the contents of 'config/' into 'share/myproject/config'
+install(DIRECTORY config/ DESTINATION share/myproject/config) 
+2. Running the Installation
+After configuring and building your project, you can trigger the installation process. 
+Modern CMake (version 3.15+):
+Use the dedicated --install command from your build directory.
+bash
+cmake --install . 
+For multi-configuration generators (like Visual Studio), specify the build configuration:
+bash
+cmake --install . --config Release
+Older CMake or general build tools:
+Run the install target using your underlying build system (e.g., make, nmake).
+bash
+make install 
+# or 
+sudo make install # Often required for system-wide locations
+
+
+################################
+
+Gnuradio Config -> mysys2/ucrt64/etc/gnuradio/conf.d/gnuradio-runtime.conf
+
+
+# This file contains system wide configuration data for GNU Radio.
+# You may override any setting on a per-user basis by editing
+# ~/.gnuradio/config.conf
+
+[DEFAULT]
+verbose = False
+
+# The maximum number of messages a block will store up before pruning
+# the queue by popping messages from the front.
+max_messages = 8192
+
+# Block output buffer size in bytes.
+#buffer_size = 32768
+
+[LOG]
+# levels, in ascending order of severity:
+# trace, debug, info, warning, error, critical, off
+log_level = info
+debug_level = debug
+log_file = /g/gnuradio_files/logs/testlogs.log
+debug_file = /g/gnuradio_files/logs/debugtestlogs.log
+
+# These file names can either be 'stdout' to output to standard output
+# or 'stderr' to output to standard error. Any other string will
+# create a file in which to output the logging information. An empty
+# string or no value here will ignore this level of configuration
+# completely.
+log_file = stdout
+debug_file = stderr
+
+
+[PerfCounters]
+on = False
+export = False
+clock = thread
+#clock = monotonic
+
+
+gnuradio-companion
+
+	Drivers
+		/c/msys64/ucrt64/lib/SoapySDR/modules0.8
+		SoapyIC7610SDR
+		
+
+[ControlPort]
+on = False
+edges_list = False
+
+
+S meter to dbm
+To find a signal's dBm: Tune to the signal, note its S-meter reading, and calculate: S-Meter Reading (dBm) = -73 dBm 
+(for S9) + (S-units above/below S9) * 3 dB.
+Example: A signal reading S-9+20 dB is -73 dBm + (20 * 3 dB) = -73 dBm + 60 dB = -13 dBm (Wait, this is wrong! Check the math).
+Corrected Example: S9 = -73 dBm. S9+10 = -63 dBm. S9+20 = -53 dBm. S9-10 = -83 dBm. S9-20 = -93 dBm. 
+
+An S-meter to dBm conversion chart shows that S9 typically equals -73 dBm (or 50 µV/50Ω) on HF, with each S-unit representing a 6 dB change, so S9+10 is -63 dBm, S8 is -79 dBm, and S1 is -121 dBm, though actual readings vary by radio. A standard chart maps S-units (S1-S9+) to specific dBm values, using a 6 dB step for each S-unit (e.g., S9+10 is 10 dB stronger than S9). 
+Standard S-Meter to dBm Chart (HF, 50 Ohm) 
+S-Reading 	dBm (approx.)	Voltage (50Ω)
+S9+40	-33 dBm	5.0 mV
+S9+30	-43 dBm	1.6 mV
+S9+20	-53 dBm	0.50 mV
+S9+10	-63 dBm	0.16 mV
+S9	-73 dBm	50 µV
+S8	-79 dBm	25 µV
+S7	-85 dBm	12.6 µV
+S6	-91 dBm	6.3 µV
+S5	-97 dBm	3.2 µV
+S4	-103 dBm	1.6 µV
+S3	-109 dBm	800 nV
+S2	-115 dBm	400 nV
+S1	-121 dBm	200 nV
+S0	-127 dBm	100 nV
+Source: hamwaves.com, gqrp.com/Smeter.pdf. 
+Key Conversion Points
+S9 as Reference: S9 is the standard reference point for HF, typically set at -73 dBm (or 50 microvolts).
+6 dB per S-Unit: Each increase of one S-unit (e.g., from S8 to S9) signifies a 6 dB increase in signal strength, which is a power increase by a factor of four (or doubling the voltage).
+dB over S9: For signals stronger than S9, you add dB values (e.g., S9+20 means 20 dB stronger than S9, or -53 dBm).
+VHF/UHF: The S9 level is different for VHF/UHF (above 30 MHz), where S9 is defined as -93 dBm (5 µV). 
+How to Use the Chart
+Find S9: Locate S9 on your meter and note its dBm value (-73 dBm for HF).
+Count Up/Down: For S8, go down 6 dB to -79 dBm; for S9+10, go up 10 dB to -63 dBm.
+Adjust for Your Radio: Recognize that your radio's S-meter is usually relative; the chart provides the standard, but actual readings can vary. 
+
+
+SigMF Meta data file examples:
+{
+  "global": {
+    "core:datatype": "cf32_le",
+    "core:sample_rate": 1000000,
+    "core:hw": "PlutoSDR with 915 MHz whip antenna",
+    "core:author": "Art Vandelay",
+    "core:version": "1.2.0"
+  },
+  "captures": [
+    {
+      "core:sample_start": 0,
+      "core:frequency": 915000000
+    }
+  ],
+  "annotations": []
+}
+
+Key Sections and Fields
+The structure is a single JSON object containing the following key sections: 
+global: Contains general information about the entire recording.
+core:datatype: Specifies the data format of the samples in the binary file (e.g., cf32_le for complex float32, little-endian).
+core:sample_rate: The rate at which the signal was sampled, in samples per second.
+core:hw: A description of the hardware used for the capture.
+core:author: The creator of the recording.
+core:version: The version of the SigMF specification used.
+Other optional fields: description, license, geolocation information (using extensions), etc..
+captures: An array of objects that describe parameters that may change during a recording, such as frequency or timestamp, each mapped to a specific sample index.
+core:sample_start: The index of the first sample to which these capture parameters apply.
+core:frequency: The center frequency of the radio at that point in the recording.
+Other optional fields: gain settings, timestamp (datetime), etc..
+annotations: An array for marking specific features or events within the signal data, like an area of interest or detected interference.
+Example fields: "detected interference here", "classified modulation as QAM64". 
+
+Package for args
+pacman -S mingw-w64-ucrt-x86_64-args
+
+https://taywee.github.io/args/
+
+JSON
+pacman -S mingw-w64-ucrt-x86_64-jsoncpp
+pacman -S mingw-w64-ucrt-x86_64-nlohmann-json  -- recomended
+pacman -S mingw-w64-ucrt-x86_64-simdjson
+pacman -S mingw-w64-ucrt-x86_64-rapidjson
+
+
+SigMF <name>.sigm-data <name>.sigm-meta
+
+
+gr-osmosdr
+GitHub Mirror: https://github.com/gqrx-sdr/gr-osmosdr 
+
+git clone https://github.com/gqrx-sdr/gr-osmosdr
+cd gr-osmosdr
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$MINGW_PREFIX ../
+make
+make install
+
+cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=$MINGW_PREFIX ..
+cmake -G Ninja -DCMAKE_INSTALL_PREFIX=$MINGW_PREFIX ..

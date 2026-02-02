@@ -11,33 +11,19 @@ Directory Structure
 
 ├── CMakeLists.txt
 
-├── FindFTD3XX.cmake
+├── FindFTD3XX.cmake : Downloads needed FTDI Library
 
 ├── Getting_Started
 
-│   ├── Getting_Started.md.docx
-
-│   ├── Notes.txt
+│   ├── Getting_Started.md.docx : Directions for setting up dev env.
 
 │   ├── minGW64
 
-│   │   ├── Install-MSYS2-MinGW.ps1
-
-│   │   ├── minGW_libpkgs.bash
-
-│   │   └── minGW_tools.bash
+│   │   ├── Tools for installing minGW development environment
 
 │   └── ucrt64
 
-│   ├── GNU_packages.bash
-
-│   ├── Install-MSYS2-UCRT64.ps1
-
-│   ├── MSYS2_Setup.md
-
-│   ├── Notes.txt
-
-│   ├── SupportedSoapyAPIMethods.md
+│   ├── Tools for installing UCRT64 development environment
 
 │   ├── ucrt64_libpkgs.bash
 
@@ -59,101 +45,64 @@ Directory Structure
 
 ├── bin
 
-├── dir_tree.txt
-
 ├── docs
 
 │   ├── Application_Note_xxxx.docx
 
 │   └── IC7610_picture.png
 
-├── get_Documents.cmake
+├── get_Documents.cmake : downloads support development documents
 
 ├── gnuradio
 
-│   ├── CosineSource.py
-
-│   ├── SoapyIC7610SDR.grc
-
-│   ├── cf32DataFile.grc
-
-│   ├── cs16DataFile.grc
-
-│   ├── hamradio.grc
-
-│   ├── s16DataFile.grc
-
-│   ├── s16DataTCP.grc
-
-│   └── s16DataZmq.grc
+│   ├── Gnu Radio Models
 
 ├── include
 
-│   ├── IcomCIVPort.hpp
-
-│   ├── IcomIQPort.hpp
-
-│   ├── SoapyIC7610SDR.hpp
-
-│   ├── common.h
-
-│   ├── ftd3xx.h
-
-│   └── version.h
+│   ├──Project include files
 
 ├── libs
 
-│   └── libftd3xx.lib
+│   └── Project libraries
 
 ├── src
 
-│   ├── CMakeLists.txt
-
-│   ├── IC7610SDR_Registration.cpp
-
-│   ├── IC7610SDR_Settings.cpp
-
-│   ├── IC7610SDR_Streaming.cpp
-
-│   ├── IcomCIVPort.cpp
-
-│   └── IcomIQPort.cpp
+│   ├── Library Sources
 
 └── test
 
-├── ArgumentFlags.cpp
+├── Test Applications
 
-├── BooleanFlags.cpp
-
-├── CIVPort_test.cpp
-
-├── Commands.cpp
-
-├── IQPortStream_test.cpp
-
-├── IQPort_test.cpp
-
-├── SimpleExample.cpp
-
-├── SoapyAPI_test.cpp
-
-├── SoapyCS16StreamTest.cpp
-
-├── SoapyStreamTest.cpp
-
-├── WriteToFile.cpp
-
-├── cs16TCPClientRandomGen.cpp
-
-├── cs16TCPRandomGenerator.cpp
-
-└── cs16zmqPush.cpp
+└── Tools : Generated Tools
 
 Getting Started
 ---------------
 
+Instructions for setting up the development environment and building tools and
+libraries are provided in the Getting_Started/Getting_Started.md document
+
 Documents
 ---------
 
+Application Note xxx1 - Covers tools and IC 7610 IQ Port Library
+
+Application Note xxx2 - Covers the SoapySDR interface
+
+Gnu Radio Models
+----------------
+
+Example GNURadio models are available in the gnuradio directory.
+
 Know Issues
 -----------
+
+This is an initial release for more extensive test.
+
+In Interfacing with GNU Radio dead lock conditions have occurred. The problem
+appears to be device FIFO issues, requiring a reset of the device.
+
+There are several known issues for GNURadio on a PC. The primary ones are the
+Socket Support, and Threads. Because of the socket issue, the IC7610TCPServer
+cannot be used with GnuRadio. Because of threads, the SoapySDR Interface does
+not work with PC GNURadio. I am currently working on these issues to resolve the
+problems.

@@ -53,7 +53,7 @@ namespace fs = std::filesystem;
 
 //#define DEFAULT_PORT_STR "6789"
 #define DEFAULT_PORT 6789
-const std::string serialNum ="12001136";
+//const std::string serialNum ="12001136";
 const uint8_t mainVFO = 0x00;
 const uint8_t subVFO = 0x01;
 
@@ -250,10 +250,10 @@ void handleClient(SocketType clientSocket) {
 void usage(void)
 {
 	printf("IC7610TCPServer for the IC7610\n\n");
-	printf("Usage:\tIC7610TCPServer.exe -f frequency [-g gain] fillepath \n");
+	printf("Usage:\tIC7610TCPServer.exe -f frequency [-g gain] [-v vfo] port \n");
 	printf("\t[-f frequency to tune to [Hz]]\n");
 	printf("\t[-g gain (default: 10 for auto)]\n");
-	printf("\t[-i interval to sample in minutes (default 1)]\n");
+	//printf("\t[-i interval to sample in minutes (default 1)]\n");
 	//printf("\t[-t data type S16, CS16, or CF32 - Default CS16\n");
 	printf("\t[-v VFO main or sub - Default main\n");
 	printf("\tport  - Default port %d \n", DEFAULT_PORT);

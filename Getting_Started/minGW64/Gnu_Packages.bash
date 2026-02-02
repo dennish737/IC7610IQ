@@ -2,26 +2,18 @@
 
 # Array of packages to check and install
 
-PACKAGES=(
-"mingw-w64-ucrt-x86_64-zeromq" 			# mqqt package
-"mingw-w64-ucrt-x86_64-cppzmq" 
-"mingw-w64-ucrt-x86_64-libusb"			# usb library
-"mingw-w64-ucrt-x86_64-libserialport"	# serial port library
-"mingw-w64-ucrt-x86_64-minizip"			# zip and unzip tools
-"mingw-w64-ucrt-x86_64-zlib"
-"mingw-w64-ucrt-x86_64-zziplib"
-"mingw-w64-ucrt-x86_64-angleproject"	# gnuradio dependencies
-"mingw-w64-ucrt-x86_64-boost"			# install boost and boost-libs
-"mingw-w64-ucrt-x86_64-codec2"
-"mingw-w64-ucrt-x86_64-fftw"
-"mingw-w64-ucrt-x86_64-libsndfile"
-"mingw-w64-ucrt-x86_64-sigutils"
-"mingw-w64-ucrt-x86_64-fmt"
-"mingw-w64-ucrt-x86_64-gmp"
-"mingw-w64-ucrt-x86_64-gsl"
-"mingw-w64-ucrt-x86_64-gtk3"
-)
-
+PACKAGES=(	
+	"mingw-w64-x86_64-gnuradio" 		# gnu radio
+	"mingw-w64-x86_64-gnuradio-dev"	# Development files
+	"mingw-w64-x86_64-gnuradio-doc"	#Documentation
+	"mingw-w64-x86_64-volk"			# Vector-Optimized Library
+	"mingw-w64-x86_64-soapysdr"		# soapysdr 
+	"mingw-w64-x86_64-rtl-sdr"			# Driver for Realtek RTL2832U
+	"mingw-w64-x86_64-soapyrtlsdr" 	# soapy rtlsdr
+	"mingw-w64-x86_64-soapyhackrf"		# soapy hackrf
+	"mingw-w64-x86_64-rtl_433"
+											#mingw-w64-x86_64-gr"
+ )
 
 echo "Checking for and installing required packages in UCRT64 environment..."
 
@@ -41,7 +33,5 @@ for pkg in "${PACKAGES[@]}"; do
         fi
     fi
 done
-
-# update all package
 pacman -Syu --noconfirm
 echo "All specified packages are installed."

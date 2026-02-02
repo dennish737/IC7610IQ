@@ -19,6 +19,7 @@ PACKAGES=(
 "mingw-w64-x86_64-fmt"
 "mingw-w64-x86_64-gmp"
 "mingw-w64-x86_64-gsl"
+"mingw-w64-x86_64-gtk3"
 )
 
 echo "Checking for and installing required packages in UCRT64 environment..."

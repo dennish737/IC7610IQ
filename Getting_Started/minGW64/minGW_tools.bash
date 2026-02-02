@@ -23,14 +23,12 @@ PACKAGES=(
 	"mingw-w64-x86_64-python-pyqt5"		# or pyqt6
 	"mingw-w64-x86_64-python-requests"
 	"mingw-w64-x86_64-python-lxml"
-	"mingw-w64-x86_64-crt-git"			# git version management
+	"mingw-w64-x86_64-python-mako"
+	"mingw-w64-x86_64-python-gobject"
+	"git"								# git version management
 	"unzip"
-	"mingw-w64-x86_64-gnuradio" 		# gnu radio
-	"mingw-w64-x86_64-soapysdr"		# soapysdr 
-	"mingw-w64-x86_64-rtl-sdr"			# Driver for Realtek RTL2832U
-	"mingw-w64-x86_64-soapyrtlsdr" 	# soapy rtlsdr
-	"mingw-w64-x86_64-soapyhackrf"		# soapy hackrf
-	"mingw-w64-x86_64-rtl_433"
+	"tree"
+
 )
 
 

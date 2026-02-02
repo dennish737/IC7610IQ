@@ -3,12 +3,16 @@
 # Array of packages to check and install
 
 PACKAGES=(
-"mingw-w64-ucrt-x86_64-gnuradio" 
-"mingw-w64-ucrt-x86_64-soapysdr"
- "mingw-w64-ucrt-x86_64-rtl-sdr"
- "mingw-w64-ucrt-x86_64-soapyhackrf"
- "mingw-w64-ucrt-x86_64-soapyrtlsdr" 
- "mingw-w64-ucrt-x86_64-gr"
+	"mingw-w64-ucrt-x86_64-gnuradio" 		# gnu radio
+	"mingw-w64-ucrt-x86_64-gnuradio-dev"	# Development files
+	"mingw-w64-ucrt-x86_64-gnuradio-doc"	#Documentation
+	"mingw-w64-ucrt-x86_64-volk"			# Vector-Optimized Library
+	"mingw-w64-ucrt-x86_64-soapysdr"		# soapysdr 
+	"mingw-w64-ucrt-x86_64-rtl-sdr"			# Driver for Realtek RTL2832U
+	"mingw-w64-ucrt-x86_64-soapyrtlsdr" 	# soapy rtlsdr
+	"mingw-w64-ucrt-x86_64-soapyhackrf"		# soapy hackrf
+	"mingw-w64-ucrt-x86_64-rtl_433"
+											#mingw-w64-ucrt-x86_64-gr"
  )
 
 echo "Checking for and installing required packages in UCRT64 environment..."

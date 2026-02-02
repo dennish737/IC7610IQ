@@ -1,7 +1,5 @@
 |       |
 |-------|
-|       |
-|       |
 | \| \| |
 |       |
 
@@ -120,7 +118,12 @@ Step 1: Installing the base MSYS2 UCRT64 environment
 4.  Go to the ./ucrt64 directory.
 
 5.  Run the ‘Install-MYS2-UCRT64.ps1’ script. This will install the MSYS2 and
-    the UCRT64 gcc tool chain
+    the UCRT64 gcc tool chain  
+      
+    Note: If you have already installed MSYS2, you do not need to run this
+    script again, if you wish to install another environment. Instead just open
+    a terminal for the environment you want, and run the gcc_install.bash script
+    to add gcc compiler and tools.
 
 Alternate Method for Installing the base MSYS2 UCRT64 environment
 -----------------------------------------------------------------
@@ -150,6 +153,7 @@ Alternate Method for Installing the base MSYS2 UCRT64 environment
     Built by MSYS2 project) 15.2.0)
 
 Step 2: Install Additional tools
+--------------------------------
 
 This step will install additional tools for development, Python and GNU Radio
 
@@ -158,7 +162,7 @@ This step will install additional tools for development, Python and GNU Radio
 2.  Go to the \<repo\>/Getting_Started/ucrt directory.
 
 3.  Enter the command:  
-    ./ucrt_tools.bash
+    ./tools_packages.bash
 
 4.  Answer Y to all prompts and wait for the script to finish
 
@@ -170,7 +174,8 @@ This step will install additional tools for development, Python and GNU Radio
     git --version  
     git will respond with its version number
 
-Step 3: Add Additional Require Packages
+Step 3: Add Additional Require Library Packages
+-----------------------------------------------
 
 This step will load any additional packages such as boost, codec2,
 libserialport, etc.
@@ -180,7 +185,7 @@ libserialport, etc.
 2.  Go to the \<repo\>/Getting_Started/ucrt64 directory.
 
 3.  Enter the command:  
-    ./ucrt_libplgs.bash
+    ./lib_packages.bash
 
 4.  Answer Y to all prompts and wait for the script to finish
 
@@ -190,7 +195,26 @@ libserialport, etc.
     it will open a new window, so look for it.  
     Close gnuradio-compainion.
 
-Step 4: Get Updates
+Step 4: Add GNURadio packages
+-----------------------------
+
+1.  Open a msys2 ucrt64 terminal.
+
+2.  Go to the \<repo\>/Getting_Started/ucrt64 directory.
+
+3.  Enter the command  
+    ./GNU_packages.bash
+
+4.  Answer Y to all prompts and wait for the script to finish
+
+5.  Check that gnuradio-companioh is installed by running the following command  
+    gunradio-companion  
+    gnuradio-companion should start running. Note: be patient, it takes a while,
+    it will open a new window, so look for it.  
+    Close gnuradio-compainion.
+
+Step 5: Get Updates
+-------------------
 
 This step will update and synchronize all the packages installed. Note you may
 need to close and open the Msys2 UCRT64 terminal, to complete the update. If the
@@ -202,6 +226,7 @@ terminal is closed, reopen it and rerun the command.
     packman -Syu -- pacman -Syu --noconfirm
 
 Building Software
+=================
 
 1.  Open a Msys2 UCRT64 terminal
 
@@ -211,7 +236,7 @@ Building Software
 
 4.  Change Directory to the build directory (cd build)
 
-5.  Run cmake (cmake -G “MSYS Makefiles” .. )
+5.  Run cmake (cmake -G “MSYS Makefiles” .. /)
 
 6.  Cmake does the following:
 

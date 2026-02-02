@@ -20,6 +20,7 @@ PACKAGES=(
 "mingw-w64-ucrt-x86_64-gmp"
 "mingw-w64-ucrt-x86_64-gsl"
 "mingw-w64-ucrt-x86_64-gtk3"
+"mingw-w64-ucrt-x86_64-nlohmann-json"
 )
 
 

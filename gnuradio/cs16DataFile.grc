@@ -37,7 +37,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '1380000'
+    value: '14100000'
   states:
     bus_sink: false
     bus_source: false
@@ -64,7 +64,7 @@ blocks:
     alias: ''
     append: 'False'
     comment: ''
-    file: g:/SoapyIC7610IQ_new/obsolete/datacapcf32.dat
+    file: g:/IC7610IQ_bip/bin/datacapcf32.dat
     type: complex
     unbuffered: 'True'
     vlen: '1'
@@ -82,19 +82,37 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: G:\SoapyIC7610IQ_new\SigMF\cf32_sample.data
+    file: G:\IC7610IQ_bip\bin\Tone1K_14_1_short.dat
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
     repeat: 'True'
-    type: complex
+    type: short
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [56, 176.0]
+    rotation: 0
+    state: enabled
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: '32767'
+    swap: 'False'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [296, 200.0]
     rotation: 0
     state: enabled
 - name: blocks_throttle2_0
@@ -190,8 +208,8 @@ blocks:
     width8: '1'
     width9: '1'
     wintype: window.WIN_BLACKMAN_hARRIS
-    ymax: '60'
-    ymin: '-20'
+    ymax: '0'
+    ymin: '-80'
   states:
     bus_sink: false
     bus_source: false
@@ -286,8 +304,8 @@ blocks:
     width8: '1'
     width9: '1'
     ylabel: Amplitude
-    ymax: '32767'
-    ymin: '-32768'
+    ymax: '1.0'
+    ymin: '-1.0'
     yunit: '""'
   states:
     bus_sink: false
@@ -359,7 +377,8 @@ blocks:
     state: enabled
 
 connections:
-- [blocks_file_source_0, '0', blocks_throttle2_0, '0']
+- [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', blocks_throttle2_0, '0']
 - [blocks_throttle2_0, '0', blocks_file_sink_0, '0']
 - [blocks_throttle2_0, '0', qtgui_freq_sink_x_0, '0']
 - [blocks_throttle2_0, '0', qtgui_time_sink_x_0, '0']

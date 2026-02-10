@@ -6,16 +6,63 @@
 #include <cstring>
 #include <algorithm>
 
+#define POINTER_SIZE 64
+
+// The data comming from the IC7610  are interleaved I/Q short values, where I is real part,
+// and Q is the complex part. When reading data, from the IC7610, each sample is 4 bytes,
+// and we read the data in 'blocks', which are multiples of 512 bytes (128 complex values). 
+// A recomended size is 1024 complex short (IQ_BUFFER_SIZE) or  (4096 bytes) per block.
+// This buffer should represent the "native" format for the device (e.g. std::vector<complex<short>>).
+// The buffer should hold NUM_BLOCKS, so the capacity should be NUM_BLOCKS * IQ_BUFFER_SIZE
+//
+// Buffer capacty:
+//	Capacity (samples)	Size in Bytes	Num 4K Blocks
+//		128					512
+//		256					1024
+//		512					2048
+//		1024				4096			1
+//		2048				8192			2
+//		4096				16384			4
+//		8192				32768			8
+//		16384				65526			16
+//		32768				131062			32
+//
+// One of the problems with ring buffer, is the reqirement to wrap around when we hit the in, and our devices
+// do not know how to 'wrap', they only want to work with continous buffers. Also when wrapping, mutex are required to 
+// protect the pointer calculatons in a SPSC model. To solve this, we can add estra 'copy' operation, by using a continous 
+// temp buffer to get the data from the device, then copy that buffer into the ring buffer, then need another copy to 
+// copy the data in the ring buffer to the'user' buffer, allowing us to handle the wrap around issue. another approach,
+// in Linux, is to use a mmap to create a virtual buffer. For windows we would need to use VirtuaAlloc, and our space 
+// would need to be multiples of the system  page size. This creates a compatibility problem, between Windows and Linux
+// Another approch is is to use a bi-partite circular buffer (BipBuffer). You can find an explination of BipBuffer at
+// https://ferrous-systems.com/blog/lock-free-ring-buffer/.
+// The major advantages of using BipBuffer are:
+//	1) We can use atomic variables instead of mutexes elemenating accidential deadlock conditions.
+//	2) Code si compatable for Linux, Windows, and microcontrolers
+//	3) We can eliminate the copy from the temp bufer to the ring buffer, by using reservations
+//	4) We can also elminate the copy from the ring buffer to the user buffer.
+//
+// Usage:
+// 		Producer: 
+//			1) Reserves a block of data
+//			2) passes the pointer to the block to the device, as a request for data of size bytes
+//			3) Device files the buffer, and returns producer.
+//			4) Producer commits the write, signaling data is available to read.
+//			5) If there is insufficient space, reserve returns a 'null', signaling buffer full
+//		Consummer:
+//			1) Consumer request a read of n bytes, and receives a pointer for the read block, and size
+//			2) when the data is consumed, the data is release by making a release call. freeingthe block for a write.
+//			3)If there is no data in the buffer, the request returns a null signaling an empty buffer.
+	
 class SPSC_BipBuffer {
     uint8_t* buffer_;
     size_t capacity_;
     
     // Padded to prevent false sharing
-    alignas(64) std::atomic<size_t> writePtr_{0};
-    alignas(64) std::atomic<size_t> readPtr_{0};
+    alignas(POINTER_SIZE) std::atomic<size_t> writePtr_{0};
+    alignas(POINTER_SIZE) std::atomic<size_t> readPtr_{0};
     // ... Additional state for tracking 2 regions (Region A/B)
-	alignas(64) std::atomic_size_t invalidPtr_; 
-	
+	alignas(POINTER_SIZE) std::atomic_size_t invalidPtr_; 	
 	bool write_wrapped_; /**< Write wrapped flag, used only in the producer */
     bool read_wrapped_;  /**< Read wrapped flag, used only in the consumer */
     
@@ -62,8 +109,6 @@ public:
     // Producer calls this
     uint8_t* Reserve(size_t size) {
         // Find largest available contiguous block, handle wrap-around
-        // ... (BipBuffer logic to maintain two regions)
-        //return &buffer_[writePtr_.load()];
 
 		const size_t w_indx = writePtr_.load(std::memory_order_relaxed);
 		const size_t r_indx = readPtr_.load(std::memory_order_acquire);

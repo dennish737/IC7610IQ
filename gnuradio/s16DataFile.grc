@@ -57,24 +57,6 @@ blocks:
     coordinate: [200, 12]
     rotation: 0
     state: enabled
-- name: blocks_file_sink_0
-  id: blocks_file_sink
-  parameters:
-    affinity: ''
-    alias: ''
-    append: 'False'
-    comment: ''
-    file: g:/SoapyIC7610IQ_new/obsolete/datacapcs16.dat
-    type: complex
-    unbuffered: 'True'
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [760, 128.0]
-    rotation: 0
-    state: enabled
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
@@ -82,7 +64,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: G:\SoapyIC7610IQ_new\SigMF\cs16_sample.data
+    file: G:\IC7610IQ_bip\bin\Tone1K_14_1_short.dat
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -379,7 +361,6 @@ blocks:
 connections:
 - [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
 - [blocks_interleaved_short_to_complex_0, '0', blocks_throttle2_0, '0']
-- [blocks_throttle2_0, '0', blocks_file_sink_0, '0']
 - [blocks_throttle2_0, '0', qtgui_freq_sink_x_0, '0']
 - [blocks_throttle2_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_throttle2_0, '0', qtgui_waterfall_sink_x_0, '0']

@@ -13,7 +13,7 @@ cmake -G "MSYS Makefiles" ..
 cmake -G "MinGW Makefiles" ..
 
 adding debug symbols to build: add flage -DCMAKE_BUILD_TYPE=Debug
-example: cmake -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+example: cmake -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Debug ../
 mkdir build
 
 

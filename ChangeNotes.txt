@@ -1,0 +1,5 @@
+Notes for Branch add_overlapped
+Goals: 
+	1) changes to use windows overlapped feature for call back development
+	2) rework of buffer management to allow for arbittary data reads, and block updates.
+	3) Increasing size of buffer blocks from 4096 (1000 sampeles) to 16384 (4096v samples).

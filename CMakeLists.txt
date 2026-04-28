@@ -173,6 +173,37 @@ target_include_directories(SoapyCS16StreamTest PRIVATE ${CMAKE_SOURCE_DIR}/inclu
 target_link_libraries(SoapyCS16StreamTest PUBLIC ${LIB_SHARED_FILE} serialport usb-1.0 SoapySDR)
 set_target_properties(SoapyCS16StreamTest PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
 
+add_executable(boostwrappert test/boostwrapper.cpp )
+target_include_directories(boostwrappert  PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(boostwrappert  PUBLIC ${LIB_SHARED_FILE} serialport spdlog fmt  boost_filesystem-mt ws2_32)
+set_target_properties(boostwrappert  PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
+
+add_executable(IQPortStream_disk_wr test/IQPortStream_disk_wr.cpp )
+target_include_directories(IQPortStream_disk_wr PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(IQPortStream_disk_wr PUBLIC ${LIB_SHARED_FILE} spdlog fmt  boost_filesystem-mt ws2_32)
+set_target_properties(IQPortStream_disk_wr PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
+
+add_executable(logtest1 test/logtest1.cpp )
+target_include_directories(logtest1 PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(logtest1 PUBLIC ${LIB_SHARED_FILE} spdlog fmt  boost_filesystem-mt ws2_32R)
+set_target_properties(logtest1 PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
+
+add_executable(logtest2 test/logtest2.cpp )
+target_include_directories(logtest2 PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(logtest2 PUBLIC ${LIB_SHARED_FILE} spdlog fmt  boost_filesystem-mt ws2_32)
+set_target_properties(logtest2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
+
+add_executable(logtest3 test/logtest3.cpp )
+target_include_directories(logtest3 PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(logtest3 PUBLIC ${LIB_SHARED_FILE} spdlog fmt  boost_filesystem-mt ws2_32)
+set_target_properties(logtest3 PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
+
+add_executable(PipeStreamTest1 test/PipeStreamTest1.cpp )
+target_include_directories(PipeStreamTest1 PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(PipeStreamTest1 PUBLIC ${LIB_SHARED_FILE} spdlog fmt  boost_filesystem-mt ws2_32)
+set_target_properties(PipeStreamTest1 PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN}")
+
+
 add_executable(SigMFWriter Tools/SigMFFileWriter.cpp src/IcomIQPort.cpp)
 target_include_directories(SigMFWriter PRIVATE ${CMAKE_SOURCE_DIR}/include )
 target_link_libraries(SigMFWriter PUBLIC ${LIB_SHARED_FILE} serialport usb-1.0 )
@@ -197,6 +228,12 @@ add_executable(findDevice Tools/findDevice.cpp)
 target_include_directories(findDevice PRIVATE ${CMAKE_SOURCE_DIR}/include )
 target_link_libraries(findDevice PUBLIC ${LIB_SHARED_FILE} serialport usb-1.0 )
 set_target_properties(findDevice PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${BIN_DIR}")
+
+add_executable(FTDI-To-Disk Tools/FTDI-To-Disk.cpp)
+target_include_directories(FTDI-To-Disk PRIVATE ${CMAKE_SOURCE_DIR}/include )
+target_link_libraries(FTDI-To-Disk PUBLIC ${LIB_SHARED_FILE} spdlog fmt  boost_filesystem-mt ws2_32)
+set_target_properties(FTDI-To-Disk PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${BIN_DIR}")
+
 
 add_custom_target(install_test
 		#COMMAND ${CMAKE_COMMAND} -E copy "${LIBS_DIR}/${LIB_SHARED_FILE}" ${TEST_BIN}

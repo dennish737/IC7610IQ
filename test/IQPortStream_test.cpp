@@ -10,9 +10,9 @@
 #include <thread>
 #include <iostream>
 #include <complex>
-//#include <libserialport.h>
 
 #include "IcomIQPort.hpp"
+
 
 const uint8_t mainVFO = 0x00;
 const uint8_t subVFO = 0x01;
@@ -127,7 +127,6 @@ int main() {
 	std::cout << "Estimated time: " <<((1.0/sample_freq)* total_samples) << " seconds" << std::endl;
 	std::cout << "Execution time for 1000 Block reads( " << total_samples << " )samples: "
 					<< duration.count() << " microseconds" << std::endl;
-;
 	
 }	
 	

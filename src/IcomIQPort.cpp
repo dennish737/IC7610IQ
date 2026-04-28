@@ -1,22 +1,8 @@
   
 
 
-/*
-#include "ftd3xx.h"
-
-#include <memory>
-#include <iostream>
-#include <cstdint>
-#include <cstring>
-#include <string>
-#include <format>
-#include <chrono>
-#include <iterator>
-#include <algorithm>
-#include <thread>
-
-#include <unistd.h> // For usleep
-*/
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#include <spdlog/spdlog.h>
 
 #include "IcomIQPort.hpp"
 #include <complex>
@@ -26,6 +12,7 @@ IcomIQPort::IcomIQPort()
 {
 	_isOpen = false;
 	_isInitialized = false;
+	_isStream = false;
 	//_cmdtimeout = TIMEOUT;
 	_cmdTimeout = CMD_TIMEOUT;
 	_dataTimeout = DATA_TIMEOUT;
@@ -38,15 +25,20 @@ IcomIQPort::IcomIQPort()
 	_IPPlus = false;
 	_DIGI_SEL = false;
 	//iqBuffer_ (16384);
+	_logger = spdlog::get("main_logger");
 }
 
-void IcomIQPort::init(std::string deviceSerialNum)
+void IcomIQPort::init(std::string deviceSerialNum, bool isStream)
 {
     //(void)args;
 	// The FT_DEVICE_LIST_INFO_NODE is a stucture consisting of information about the 
-	// device (Flags, Type, ID, serial number, description and handle
+	// device (Flags, Type, ID, serial number, description and ftHandle
 	// change number of devices (currently 16) to a constant
+	if (_logger){
+        SPDLOG_LOGGER_DEBUG(_logger, "Initializing IcomIQPort: serial number = {}, isAtream = {}", deviceSerialNum, ((isStream)? "TRUE" : "FALSE"));
+    }
 	_deviceSerialNum = deviceSerialNum;
+	_isStream = isStream;
     FT_DEVICE_LIST_INFO_NODE nodes[16];
     DWORD count;
     int res;
@@ -65,14 +57,23 @@ void IcomIQPort::init(std::string deviceSerialNum)
         throw std::runtime_error("Failed to get list FTDI device(s)");
     }
 	// Open the high speed usb data port
-    FT_Create((PVOID) (deviceSerialNum.c_str()), FT_OPEN_BY_SERIAL_NUMBER, &handle);
-    if (!handle) {
+	if (!_isStream) {
+    	FT_Create((PVOID) (deviceSerialNum.c_str()), FT_OPEN_BY_SERIAL_NUMBER, &ftHandle);
+	} else {
+		// we are suppose to be able to set the FILE_FLAG_OVERLAPPED flag, for boost, but it fails
+		//FT_Create((PVOID) (deviceSerialNum.c_str()), FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FT_OPEN_BY_SERIAL_NUMBER, &ftHandle);
+		FT_Create((PVOID) (deviceSerialNum.c_str()), FT_OPEN_BY_SERIAL_NUMBER, &ftHandle);
+	}
+
+    if (!ftHandle) {
         //SoapySDR_logf(SOAPY_SDR_ERROR, "FT_Create failed: %s\n", deviceSerialNum.c_str());
 		//fprintf(stderr, "FT_Create failed: %s\n", deviceSerialNum.c_str());
         throw std::runtime_error("Failed to open FTDI device");
 	}	
 	_isInitialized = true;
 	_isOpen = true;
+	// initialize boost  context and stream
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Initialization Complete");}
 
 }
 
@@ -95,26 +96,30 @@ std::string IcomIQPort::getDeviceSerialNum()
 	// use the first device returned
 	std::string serialNum = nodes[0].SerialNumber;
 
+	//if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Get Serial Number = {}", serialNum);};
+
 	return serialNum;	
 }
 IcomIQPort::~IcomIQPort()
 {
-    FT_AbortPipe(handle, CMD_OUT);
-    FT_AbortPipe(handle, CMD_IN);
-    FT_AbortPipe(handle, IQ_IN);
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "IcomIQPort closing");}
+    FT_AbortPipe(ftHandle, CMD_OUT);
+    FT_AbortPipe(ftHandle, CMD_IN);
+    FT_AbortPipe(ftHandle, IQ_IN);
 	if (_running) {
 		_read_thread.join();
 	}
-    FT_Close(handle);
+    FT_Close(ftHandle);
 }
 void IcomIQPort::close()
 {
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Port closing");}
 	if (_isOpen)
 	{
-		FT_AbortPipe(handle, CMD_OUT);
-		FT_AbortPipe(handle, CMD_IN);
-		FT_AbortPipe(handle, IQ_IN);
-		FT_Close(handle);
+		FT_AbortPipe(ftHandle, CMD_OUT);
+		FT_AbortPipe(ftHandle, CMD_IN);
+		FT_AbortPipe(ftHandle, IQ_IN);
+		FT_Close(ftHandle);
 		_isOpen = false;
 	}
 }
@@ -126,6 +131,16 @@ void IcomIQPort::print_vector(std::vector<uint8_t> v)
 		printf("%02X ", v[i]);
 	}
 	printf("\n");	
+}
+
+std::string IcomIQPort::to_hex(const unsigned char* data, size_t len)
+{
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < len; ++i) {
+        ss << std::setw(2) << static_cast<int>(data[i]);
+    }
+    return ss.str();	
 }
 
 // Helper function to check and print FT_STATUS errors
@@ -142,7 +157,7 @@ bool IcomIQPort::sendIQCommand( std::vector<uint8_t> cmd)
     DWORD buf_size = 4;
     FT_STATUS res;
     DWORD count;
-
+	
 	//SoapySDR_logf(SOAPY_SDR_INFO, "send_cmd  called");
 	//fprintf(stderr, "send_cmd  called\n");
     for (size_t i = 0; i < cmd.size(); i++) {
@@ -153,11 +168,9 @@ bool IcomIQPort::sendIQCommand( std::vector<uint8_t> cmd)
         buf[buf_size++] = 0xff;
     }
 
-    //for (size_t i = 0; i < buf_size; i++) {
-        //SoapySDR_logf(SOAPY_SDR_INFO, "sending command: %02x", buf[i]);
-		//fprintf(stderr, "sending command: %02x\n", buf[i]);
-    //}
-    if ((res = FT_WritePipe(handle, CMD_OUT, buf, buf_size, &count, 0)) != FT_OK) {
+
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "send IQ Command {}",to_hex(buf, buf_size));}
+    if ((res = FT_WritePipe(ftHandle, CMD_OUT, buf, buf_size, &count, 0)) != FT_OK) {
                 //SoapySDR_logf(SOAPY_SDR_INFO,"FT_WritePipe: %ld\n", res);
 				//fprintf(stderr,"FT_WritePipe: %ld\n", res);
                 return false;
@@ -180,10 +193,10 @@ int IcomIQPort::readIQReply( std::vector<uint8_t>& buffer)
 		//SoapySDR_logf(SOAPY_SDR_INFO, "read_reply  called");
 		//fprintf(stderr, "read_reply  called\n");
 		
-        if ((res = FT_ReadPipe(handle, CMD_IN, buf, sizeof(buf), &count, 0)) != FT_OK) {
+        if ((res = FT_ReadPipe(ftHandle, CMD_IN, buf, sizeof(buf), &count, 0)) != FT_OK) {
                 //SoapySDR_logf(SOAPY_SDR_INFO,"FT_ReadPipe: %ld\n", res);
 				//fprintf(stderr,"FT_ReadPipe: %ld\n", res);
-                res = FT_AbortPipe(handle, CMD_IN);
+                res = FT_AbortPipe(ftHandle, CMD_IN);
                 //SoapySDR_logf(SOAPY_SDR_INFO,"FT_AbortPipe: %ld\n", res);
 				//fprintf(stderr,"FT_AbortPipe: %ld\n", res);
                 return 0;
@@ -197,7 +210,7 @@ int IcomIQPort::readIQReply( std::vector<uint8_t>& buffer)
 			//fprintf(stderr, "reading command: %02x\n", buf[i]);
             buffer.push_back(buf[i]);
         }
-
+		if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "read reply {}",to_hex(buffer.data(), buffer.size()));}
         return buffer.size();
 }
 	
@@ -232,8 +245,8 @@ void IcomIQPort::setTimeout(uint8_t channelID, int timeOut)
 	// if we are setting timeout on the CMD channels, we need to set them the same
 	if (channelID == CMD_IN || channelID == CMD_OUT)
 	{
-		ftStatus = FT_SetPipeTimeout(handle, CMD_IN, timeOut);
-		ftStatus = FT_SetPipeTimeout(handle, CMD_OUT, timeOut);
+		ftStatus = FT_SetPipeTimeout(ftHandle, CMD_IN, timeOut);
+		ftStatus = FT_SetPipeTimeout(ftHandle, CMD_OUT, timeOut);
 		// if set was unsuccessful, do not update _timeout value
 		if (ftStatus == FT_OK)
 		{
@@ -243,13 +256,14 @@ void IcomIQPort::setTimeout(uint8_t channelID, int timeOut)
 			// if set was unsuccessful, do not update _timeout value
 		}
 	} else {
-		ftStatus = FT_SetPipeTimeout(handle, channelID, timeOut);
+		ftStatus = FT_SetPipeTimeout(ftHandle, channelID, timeOut);
 		// if set was unsuccessful, do not update _timeout value
 		if (ftStatus == FT_OK)
 		{
 			_dataTimeout = timeOut;
 		} else {
-			fprintf(stderr,"Set timeout on Data Channel  %0x failed status= %ld\n", channelID, ftStatus);			
+			if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Set timeout on Data Channel  {:x} failed status= {}}\n", channelID, ftStatus);}
+			//fprintf(stderr,"Set timeout on Data Channel  %0x failed status= %ld\n", channelID, ftStatus);			
 			// if set was unsuccessful, do not update _timeout value
 		}
 	}
@@ -260,6 +274,7 @@ bool IcomIQPort::enableIQData(uint8_t source)
 {
 	if (!_iqDataEnabled)
 	{
+		if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Enabeling IQ Port");}
 		// note: source (vfo) are 0 (main) and 1 (sub). enable commands are 0 (off), 1 (main), 2(sub)
 		std::vector<uint8_t> command = {0x1a, 0x0b, (uint8_t)(source + 1)};
 		std::vector<uint8_t> reply;
@@ -267,12 +282,15 @@ bool IcomIQPort::enableIQData(uint8_t source)
 		if (byte_count > 0) {
 		_iqDataEnabled = true;
 		}
+	} else {
+		if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "IQ Port already enabled");}
 	}
 	return _iqDataEnabled;
 }
 
 void IcomIQPort::disableIQData()
 {
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Disabeling IQ Port");}
 	std::vector<uint8_t> command = {0x1a, 0x0b, 0x00};
 	std::vector<uint8_t> reply;
 	int byte_count = icomIQCommand(command, reply);
@@ -296,11 +314,11 @@ int IcomIQPort::readIQData(std::complex<short> *buffer, size_t buffer_size, void
 	
 	OVERLAPPED* vOverlapped = static_cast<OVERLAPPED*>(overlapped_);
 	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(buffer);
-
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Reading IQ data");}
 	if (_iqDataEnabled){
 
 		
-		if ((res = FT_ReadPipe(handle, 
+		if ((res = FT_ReadPipe(ftHandle, 
 				IQ_IN, 					// Pipe ID (Endpoint address)
 				byte_ptr, 				// Pointer to the buffer to read data into
 				bytesToRead, 			// Number of bytes to read
@@ -311,9 +329,9 @@ int IcomIQPort::readIQData(std::complex<short> *buffer, size_t buffer_size, void
 				if (res == FT_IO_PENDING && (overlapped_ != nullptr))
 				{
 					fprintf(stderr,"FT_ReadPipe: FT_IO_PENDING (%d) \n", res);
-					res = FT_GetOverlappedResult(handle, vOverlapped, &bytesTransferred, TRUE);
+					res = FT_GetOverlappedResult(ftHandle, vOverlapped, &bytesTransferred, TRUE);
 					
-					// tbd handle overlapped errors
+					// tbd ftHandle overlapped errors
 				} else
 				{
 					fprintf(stderr,"FT_ReadPipe: %d\n", res);
@@ -324,10 +342,9 @@ int IcomIQPort::readIQData(std::complex<short> *buffer, size_t buffer_size, void
 		return -32;
 	}
 	int samplesRead = bytesTransferred / sizeof(std::complex<short>);
+	if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Bytes Read = {}, samplesRead = {}", bytesTransferred, samplesRead);}
 	return samplesRead;
 }
-
-
 
 std::string IcomIQPort::iqGetChipConfiguration()
 {
@@ -337,7 +354,7 @@ std::string IcomIQPort::iqGetChipConfiguration()
     // Initialize the structure to zero
     ZeroMemory(&chipConfiguration, sizeof(chipConfiguration));
 	
-    ftStatus = FT_GetChipConfiguration(handle, &chipConfiguration);
+    ftStatus = FT_GetChipConfiguration(ftHandle, &chipConfiguration);
     CheckStatus(ftStatus, "FT_GetChipConfiguration");
 	
 	std::vector<char> buffer(256);
@@ -372,7 +389,7 @@ std::string IcomIQPort::iqGetDevicveDescriptor()
     // Initialize the structure to zero
     ZeroMemory(&deviceConfiguration, sizeof(deviceConfiguration));
 	std::vector<char>buffer(256);
-    ftStatus = FT_GetDeviceDescriptor(handle, &deviceConfiguration);
+    ftStatus = FT_GetDeviceDescriptor(ftHandle, &deviceConfiguration);
     CheckStatus(ftStatus, "FT_GetChipConfiguration");
 	
 	if (ftStatus == FT_OK) {
@@ -801,7 +818,7 @@ bool IcomIQPort::iqSetStreamPipe(uint8_t channelID, size_t streamBufferSize)
 {
 	bool success = true;
 	FT_STATUS ft_status = FT_OK;
-	ft_status = FT_SetStreamPipe(handle, false, false, channelID, streamBufferSize);
+	ft_status = FT_SetStreamPipe(ftHandle, false, false, channelID, streamBufferSize);
 	if (ft_status != FT_OK){
 		success = false;
 		fprintf(stderr,"SetStreamPipe failed errorcode = %ld\n", ft_status);
@@ -814,7 +831,7 @@ bool IcomIQPort::iqClearStreamPipe(uint8_t channelID)
 {
 	bool success = true;
 	FT_STATUS ft_status = FT_OK;
-	ft_status = FT_ClearStreamPipe(handle, false, false, channelID);
+	ft_status = FT_ClearStreamPipe(ftHandle, false, false, channelID);
 	if (ft_status != FT_OK){
 		success = false;
 		fprintf(stderr,"ClearStreamPipe failed errorcode = %ld\n", ft_status);
@@ -827,10 +844,74 @@ bool IcomIQPort::iqClearStreamPipe(uint8_t channelID)
 int IcomIQPort::iqAbortPipe(uint8_t pipe)
 {
 	FT_STATUS status;
-	status = FT_AbortPipe(handle, pipe);
+	status = FT_AbortPipe(ftHandle, pipe);
 	if (status != FT_OK) status = - status;
 	return status;	
 }
+
+//int IcomIQPort::readIQDataEx(uint8_t *buffer, size_t buffer_size, void* overlapped_)
+int IcomIQPort::readIQDataEx(uint8_t* buffer, size_t buffer_size, void* overlapped)
+{
+	// make sure buffer_size is multiple of 512 bytes (128 complex<short>, or adjust to lower size
+	// to not over run the buffer;
+	//size_t alined_size = (buffer_size / 128) * 128;
+	//DWORD bytesTransferred = 0;
+    //DWORD bytesToRead = (DWORD)buffer_size; // Size of the buffer to read
+	//DWORD bytesToRead = (DWORD) alined_size * sizeof(std::complex<short>); // Size of the buffer to read
+	long unsigned int byte_count;
+	iqASYNC_CONTEXT* ctx;
+	uint32_t* count;
+	if (overlapped != nullptr) {
+		ctx = reinterpret_cast<iqASYNC_CONTEXT*>(overlapped);
+		ctx->bytesUsed = 0;
+	}
+
+
+
+	int res;
+	
+	//OVERLAPPED* vOverlapped = static_cast<OVERLAPPED*>(overlapped_);
+	//uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(buffer);
+
+	if (_iqDataEnabled){
+
+		
+		res = FT_ReadPipeEx(ftHandle, 
+				IQ_IN, 					// Pipe ID (Endpoint address)
+				buffer, 				// Pointer to the buffer to read data into
+				buffer_size, 			// Number of bytes to read
+				((ctx != nullptr)? (PULONG)( &ctx->bytesUsed) : (PULONG)(&byte_count)), 					// Pointer to store the number of bytes actually read
+				((overlapped != nullptr)? (LPOVERLAPPED)(&ctx->overlapped) : NULL)	// Reserved, must be NULL for synchronous operation, not null for async
+				);
+
+		if (res != FT_OK ) {
+			if (res == FT_IO_PENDING) {
+					res = 0;
+			} else {
+				res = - res;
+			}
+		} else {
+			return -32;
+		}		
+	}
+	return res;
+}
+
+int IcomIQPort::iqGetOverlappedResults(iqASYNC_CONTEXT* context, bool wait) {
+	int ft_status;
+	ft_status = FT_GetOverlappedResult(ftHandle, &context->overlapped, &context->bytesUsed, wait);
+	if (ft_status != FT_OK ) {
+		if (ft_status == FT_IO_PENDING) {
+				ft_status = 0;
+		} else {
+			ft_status= - ft_status;
+			iqAbortPipe(IQ_IN);
+
+		}
+	}
+	return ft_status;
+}
+
 
 
 bool IcomIQPort::iqAsyncStart(uint8_t vfo)
@@ -849,7 +930,7 @@ bool IcomIQPort::iqAsyncStart(uint8_t vfo)
 	if (enableIQData(vfo))
 	{
 		
-		//FT_STATUS ftStatus = FT_SetStreamPipe(handle, FALSE, FALSE, IQ_IN); 
+		//FT_STATUS ftStatus = FT_SetStreamPipe(ftHandle, FALSE, FALSE, IQ_IN); 
 		//if (ftStatus != FT_OK) {
 			_read_thread = std::thread(&IcomIQPort::iqAsyncReadWorker, this);
 			_running = true;
@@ -866,23 +947,23 @@ void IcomIQPort::iqAsyncStop() {
 	
 	// set running to false
 	_running = false;
-	// check if we have a valid handle, then abort pipe
-    if (handle != nullptr) {
-        status = FT_AbortPipe(handle, IQ_IN);
+	// check if we have a valid ftHandle, then abort pipe
+    if (ftHandle != nullptr) {
+        status = FT_AbortPipe(ftHandle, IQ_IN);
 		if (status != FT_OK) {
 			std::cerr << "Failed to abort pipe. Status: " << status << std::endl;
-			// Handle error as appropriate
+			// ftHandle error as appropriate
 		}
 		// disable pipe ??
-        status = FT_AbortPipe(handle, CMD_IN);
+        status = FT_AbortPipe(ftHandle, CMD_IN);
 		if (status != FT_OK) {
 			std::cerr << "Failed to abort pipe. Status: " << status << std::endl;
-			// Handle error as appropriate
+			// ftHandle error as appropriate
 		}
-        status = FT_AbortPipe(handle, CMD_OUT);
+        status = FT_AbortPipe(ftHandle, CMD_OUT);
 		if (status != FT_OK) {
 			std::cerr << "Failed to abort pipe. Status: " << status << std::endl;
-			// Handle error as appropriate
+			// ftHandle error as appropriate
 		}
     }	
 
@@ -893,7 +974,7 @@ void IcomIQPort::iqAsyncStop() {
     }
 	
 	
-	//FT_STATUS ftStatus = FT_ClearStreamPipe(handle, FALSE, FALSE, IQ_IN);
+	//FT_STATUS ftStatus = FT_ClearStreamPipe(ftHandle, FALSE, FALSE, IQ_IN);
 	disableIQData();
 	//iqBuffer_.clear_ringbuffer();
 }		
@@ -933,7 +1014,7 @@ int IcomIQPort::iqInitializeOverlapped(void* overlapped_ )
 	ZeroMemory(vOverlapped, sizeof(vOverlapped)); // Zero the structure
 	// other option
 	//vOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL); // Create a manual-reset event
-	ft_status = FT_InitializeOverlapped(handle,vOverlapped);
+	ft_status = FT_InitializeOverlapped(ftHandle,vOverlapped);
 	if (ft_status != FT_OK){
 		ft_status = - ft_status;
 	}
@@ -944,7 +1025,7 @@ int IcomIQPort::iqReleaseOverlapped(void* overlapped_)
 {
 	OVERLAPPED* vOverlapped = static_cast<OVERLAPPED*>(overlapped_);
 	FT_STATUS ft_status;
-	ft_status = FT_ReleaseOverlapped(handle,vOverlapped);
+	ft_status = FT_ReleaseOverlapped(ftHandle,vOverlapped);
 	if (ft_status != FT_OK){
 		ft_status = - ft_status;
 	}
@@ -965,6 +1046,26 @@ size_t IcomIQPort::iqGetSizeOfAvailableData(){
 	return availableData;
 }
 
+
+/*
+int IcomIQPort:: SetCallback(std::function<void(void* context, uint8_t pipeId, size_t count )> callback, void* context) {
+	FT_STATUS ft_status;
+	ft_status = FT_SetNotificationCallback(ftHandle, callback, context);
+	if (ft_status != FT_OK) {
+		ft_status = -ft_status;
+	}
+	return ft_status;
+}
+int IcomIQPort::ClearCallback() {
+	FT_STATUS ft_status;
+	ft_status = FT_ClearNotificationCallback(ftHandle);
+	if (ft_status != FT_OK) {
+		ft_status = -ft_status;
+	}
+	return ft_status;
+}
+*/
+
 void IcomIQPort::iqAsyncReadWorker() {
 
     FT_STATUS ft_status = FT_OK;
@@ -976,10 +1077,10 @@ void IcomIQPort::iqAsyncReadWorker() {
 	ZeroMemory(&vOverlapped, sizeof(vOverlapped)); // Zero the structure
 	//vOverlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL); // Create a manual-reset event
 
-	ft_status = FT_InitializeOverlapped(handle,&vOverlapped);
+	ft_status = FT_InitializeOverlapped(ftHandle,&vOverlapped);
 	//queue the initial batch request
 	ft_status = FT_ReadPipe(
-		handle,
+		ftHandle,
 		IQ_IN,           // Endpoint address (e.g., BULK IN 2)
 		temp_buffer,
 		IQ_BLOCK_LENGTH,
@@ -997,7 +1098,7 @@ void IcomIQPort::iqAsyncReadWorker() {
         // start by gettingthe overlap 
 		// wait for compleation
 		//std::cerr << "FT_ReadPipeAsync waiting for compleation: " << ft_status << std::endl;
-		ft_status = FT_GetOverlappedResult(handle, &vOverlapped, &bytes_read, true);
+		ft_status = FT_GetOverlappedResult(ftHandle, &vOverlapped, &bytes_read, true);
 		//std::cerr << "FT_ReadPipeAsync completed: " << ft_status << std::endl;
 
 		if (ft_status == FT_OK && bytes_read > 0)
@@ -1030,7 +1131,7 @@ void IcomIQPort::iqAsyncReadWorker() {
 			memset(temp_buffer, 0xff, sizeof(_buffer_size));
 			// queue next read
 			ft_status = FT_ReadPipe(
-				handle,
+				ftHandle,
 				IQ_IN,           // Endpoint address (e.g., BULK IN 2)
 				temp_buffer,
 				IQ_BLOCK_LENGTH,
@@ -1042,7 +1143,7 @@ void IcomIQPort::iqAsyncReadWorker() {
 		} else 	if (ft_status == FT_TIMEOUT) {
 				//std::cerr << "FT_ReadPipeAsync timedout: " << ft_status << std::endl;
 				ft_status = FT_ReadPipe(
-					handle,
+					ftHandle,
 					IQ_IN,           // Endpoint address (e.g., BULK IN 2)
 					temp_buffer,
 					IQ_BLOCK_LENGTH,
@@ -1051,11 +1152,11 @@ void IcomIQPort::iqAsyncReadWorker() {
 				);
 		} else {
             std::cerr << "FT_ReadPipeAsync failed with status: " << ft_status << std::endl;
-            // Handle error, maybe break the loop, or if timeout handle timeout
+            // ftHandle error, maybe break the loop, or if timeout ftHandle timeout
 			this->iqAsyncStop(); // ??
             break;
         }
-        // Note: The driver handles the asynchronous nature, this loop manages the submission/completion cycle.
+        // Note: The driver ftHandles the asynchronous nature, this loop manages the submission/completion cycle.
     }
-	FT_ReleaseOverlapped(handle, &vOverlapped);
+	FT_ReleaseOverlapped(ftHandle, &vOverlapped);
 }	

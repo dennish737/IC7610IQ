@@ -4,8 +4,8 @@
 
 PACKAGES=(	
 	"mingw-w64-x86_64-gnuradio" 		# gnu radio
-	"mingw-w64-x86_64-gnuradio-dev"	# Development files
-	"mingw-w64-x86_64-gnuradio-doc"	#Documentation
+#	"mingw-w64-x86_64-gnuradio-dev"	# Development files
+#	"mingw-w64-x86_64-gnuradio-doc"	#Documentation
 	"mingw-w64-x86_64-volk"			# Vector-Optimized Library
 	"mingw-w64-x86_64-soapysdr"		# soapysdr 
 	"mingw-w64-x86_64-rtl-sdr"			# Driver for Realtek RTL2832U

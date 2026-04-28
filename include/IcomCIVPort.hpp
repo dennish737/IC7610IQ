@@ -23,6 +23,17 @@
 #include "version.h"
 #include "common.h"
 
+/*
+ Communications to control Icom Equipment is done using the Communication Information version V (5),  CIV or CI-V protocol
+ For radios that support IQ streaming (e.g. IC 7610), there are two CIV ports: a standard usb/serial port, and a high
+ speed usb port for IQ streaming.
+
+ When controling the radio, you want to use the the standard serial port, and the IcomCIVPort library. When usingthe IQ data port,
+ you will need to use the IcomIQPort library for sending and receiving data.
+
+ This file is for the IcomCIVPort.
+
+*/
 
 
 // Define the target Vendor ID and Product ID

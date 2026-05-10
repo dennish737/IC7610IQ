@@ -6,10 +6,12 @@
 #include <mutex>
 #include <stack>
 
+// logging functions
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h" // For color console
-#include <memory>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>// Required for color console logging
+#include <spdlog/fmt/ranges.h> // Required for vector support
+#include <spdlog/fmt/bin_to_hex.h> // format vector of bytes to hex values
 
 /*
 
@@ -44,8 +46,8 @@
 
 */
 
-#define NUM_BUFFERS 8
-#define BUFFER_SIZE 16384
+#define NUM_BUFFERS 16
+#define BUFFER_SIZE 65536
 #define SYS_PAGE_SIZE 4096
 
 struct Buffer {
@@ -54,7 +56,21 @@ public:
     uint8_t bufferId;
     ULONG totalUsed;
     size_t size;
+
+    Buffer(uint8_t id, size_t numBytes, size_t alignment)
+    {
+        bufferId = id;
+        totalUsed = 0;
+        size = numBytes;
+        bufferPointer = (uint8_t*)_aligned_malloc(size, alignment);        
+    }
+
+    ~Buffer() 
+    {
+        _aligned_free(bufferPointer);
+    }
 };
+
 
 class BufferPool {
 private:
@@ -62,23 +78,23 @@ private:
     std::vector<Buffer*> bufferList; // used to prevent memory leaks
     std::mutex mutex;
     size_t bufferSize;
+
     std::shared_ptr<spdlog::logger> _logger;
 
 public:
-    BufferPool(size_t count, size_t size) : bufferSize(size) {
-        _logger = spdlog::get("main_logger");
+    BufferPool(size_t count, size_t size, size_t alignment= SYS_PAGE_SIZE) : bufferSize(size) {
+        _logger = spdlog::default_logger();
         if (_logger){
-            SPDLOG_LOGGER_DEBUG(_logger, "Initializing BufferPool Class: num buffer = {}, buffer size = {}", count, size);
+            SPDLOG_LOGGER_DEBUG(_logger, "Initializing BufferPool Class: num buffer = {}, buffer size = {}, alignment = {}", count, size, alignment);
         }
         for (size_t i = 0; i < count; ++i) {
-            Buffer* bufPtr = new Buffer();
-            bufPtr->bufferId = i;
-            bufPtr->totalUsed = 0;
-            bufPtr-> size = size;
-            // Use _aligned_malloc for better performance with USB 3.0 DMA
-            bufPtr->bufferPointer = (uint8_t*)_aligned_malloc(size, SYS_PAGE_SIZE);
+            Buffer* bufPtr = new Buffer(i, bufferSize, alignment);
+
             freeBuffers.push(bufPtr);
             bufferList.push_back(bufPtr);
+            if(_logger) {
+                SPDLOG_LOGGER_DEBUG(_logger, "Buffer  id= {}, size = {}, alignment = {} created", bufPtr->bufferId, bufPtr->size, alignment);
+            }
         }
     }
 
@@ -90,7 +106,7 @@ public:
         }
         Buffer* buf = freeBuffers.top();
         buf->totalUsed = 0;
-        SPDLOG_LOGGER_DEBUG(_logger, "Buffer {} acquired", buf->bufferId);
+        SPDLOG_LOGGER_DEBUG(_logger, "Buffer id = {} acquired", buf->bufferId);
         freeBuffers.pop();
         return buf;
     }
@@ -99,7 +115,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex);
         buf->totalUsed = 0;
         freeBuffers.push(buf);
-        if (_logger) { SPDLOG_LOGGER_DEBUG(_logger, "Buffer {} released", buf->bufferId);}
+        if (_logger) { SPDLOG_LOGGER_DEBUG(_logger, "Buffer id = {} released", buf->bufferId);}
     }
 
     ~BufferPool() {
@@ -110,13 +126,13 @@ public:
             if (it != bufferList.end()) {
                 bufferList.erase(it);
             }
-            _aligned_free(bufPtr->bufferPointer);
+            delete bufPtr;
             freeBuffers.pop();
         }
         // clean up any buffers that were acquired but not released
         if (!bufferList.empty() ) {
             for (Buffer* ptr : bufferList) {   
-                   _aligned_free(ptr->bufferPointer) ;    
+                   delete ptr ;    
             }
         bufferList.clear();
     }

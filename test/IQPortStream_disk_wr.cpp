@@ -50,12 +50,13 @@ namespace asio = boost::asio;
 
 std::string fileName = "IQStreamTestDatq.data";
 
+spdlog::logger* consoleLog;
 
 struct ASYNC_CONTEXT : OVERLAPPED {
 	UINT id;
 	HANDLE ftHandle;
     Buffer* buffer;          // Data buffer for this request
-	void (*on_complete)(ASYNC_CONTEXT*, DWORD, DWORD);
+	void (*on_complete)(ASYNC_CONTEXT*, DWORD, DWORD,std::chrono::steady_clock::time_point);
 
     ASYNC_CONTEXT(HANDLE devHandle) {
         memset(this, 0, sizeof(OVERLAPPED));
@@ -66,8 +67,9 @@ struct ASYNC_CONTEXT : OVERLAPPED {
     ~ASYNC_CONTEXT() { CloseHandle(hEvent); }
 };
 
-// 2. Callback function
-void OnReadComplete(ASYNC_CONTEXT* ov, DWORD errorCode, DWORD bytesTransferred) {
+/* 2. Callback function
+void OnReadComplete(ASYNC_CONTEXT* ov, DWORD errorCode, DWORD bytesTransferred, std::chrono::steady_clock::time_point start) 
+{
 	FT_STATUS  status;
     std::cout << "Read completed. Bytes: " << bytesTransferred << " Error: " << errorCode << std::endl;
 	auto end = std::chrono::steady_clock::now();
@@ -93,7 +95,7 @@ void OnReadComplete(ASYNC_CONTEXT* ov, DWORD errorCode, DWORD bytesTransferred) 
 	status = FT_ReadPipeEx(ov->ftHandle, IQ_IN, buf_ptr, BUFFER_SIZE, bytesTransferredPtr, ov);
 	consoleLog->info("Context({})status = {}", currentIdx, status);
 }
-
+*/
 // Callback function to handle completion
 void OnWriteComplete(ASYNC_CONTEXT* ov, const boost::system::error_code& ec, std::size_t bytes_transferred) {
     if (!ec) {
@@ -117,7 +119,7 @@ size_t sample_size = 4; // bytes
 size_t num_samples_per_buff = 1024; // samples per read block
 size_t num_buffers = 16;  //number of buffers
 
-spdlog::logger* consoleLog;
+
 
 
 spdlog::logger* getConsoleLogger() {
@@ -153,7 +155,7 @@ void print_vector(std::vector<uint8_t> v)
 }
 
 // 2. Callback function
-void OnReadComplete(ASYNC_CONTEXT* ov, DWORD errorCode, DWORD bytesTransferred) {
+void OnReadComplete(ASYNC_CONTEXT* ov, DWORD errorCode, DWORD bytesTransferred, std::chrono::steady_clock::time_point start) {
 	FT_STATUS  status;
     std::cout << "Read completed. Bytes: " << bytesTransferred << " Error: " << errorCode << std::endl;
 	auto end = std::chrono::steady_clock::now();
@@ -326,7 +328,7 @@ int main() {
 			consoleLog->info(" process data");
 			consoleLog->info( "Completion Status {}", status);
 			consoleLog->info( " Number of bytes {}", ov[currentIdx].buffer->totalUsed);
-			ov[currentIdx].on_complete(&ov[currentIdx], status, ov[currentIdx].buffer->totalUsed);
+			ov[currentIdx].on_complete(&ov[currentIdx], status, ov[currentIdx].buffer->totalUsed, start);
 
         }
 		else {

@@ -1,0 +1,30 @@
+Git Workflow
+
+1. Setup & Configuration
+Configure your identity for all local repositories. 
+
+Set username: git config --global user.name "Your Name"
+Initialize a repo: git init (creates a new local repository)
+Clone a repo: git clone [url] (downloads an existing project)
+Create a new branch: git checkout -b <branch name>
+Push the new branch to github: git push origin <branch_name>
+
+2. Basic Daily Workflow
+The standard loop for making and saving changes. 
+
+Check status: git status (see modified files)
+Stage changes: git add [file] (add a specific file) or git add . (add all changes)
+Commit changes: git commit -m "commit message"
+View history: git log
+Push changes: git push origin [branch-name]
+Pull updates: git pull (fetches and merges remote changes)
+
+3. Branching & Merging
+Used to develop features in isolation without breaking the main code. 
+
+List branches: git branch
+Create branch: git branch [name]
+Switch branch: git checkout [name] (or git switch [name])
+Create & switch: git checkout -b [name]
+Merge branch: git merge [branch-name] (merges that branch into your current one)
+Delete branch: git branch -d [branch-name]

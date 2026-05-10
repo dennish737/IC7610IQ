@@ -1,0 +1,33 @@
+Build Instructions:
+
+1) UCRT Ninja
+	a) open a MSYS2 UCRT64 terminal
+	b) change to the repo directory:cd <repo> 
+	c) Create build directory: mkdir build
+	d) Change to build directory: cd build
+	e) cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+	f) cmake --build .
+	
+2) UCRT Make
+	a) open a MSYS2 UCRT64 terminal
+	b) change to the repo directory:cd <repo> 
+	c) Create build directory: mkdir build
+	d) Change to build directory: cd build
+	e) cmake -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+	f) make or cmake --build build
+	
+3) MinGW Ninja
+	a) open a MSYS2 MinGW64 terminal
+	b) change to the repo directory:cd <repo> 
+	c) Create build directory: mkdir build
+	d) Change to build directory: cd build
+	e) cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+	f) cmake --build .
+	
+4) Mingw Make
+	a) open a MSYS2 MinGW terminal
+	b) change to the repo directory:cd <repo> 
+	c) Create build directory: mkdir build
+	d) Change to build directory: cd build
+	e) cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+	f) make or cmake --build build

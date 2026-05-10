@@ -1,12 +1,11 @@
 
 
+// g++ -I../include SigMFFileWriter.cpp ../src/IcomIQPort.cpp -o SigMFFileWriter.exe  -lspdlog -lfmt -lboost_filesystem-mt -lws2_32 -L ../libs -lftd3xx
+// g++ -I../include -DDEBUG SigMFFileWriter.cpp ../src/IcomIQPort.cpp -o SigMFFileWriter.exe  -lspdlog -lfmt -lboost_filesystem-mt -lws2_32 -L ../libs -lftd3xx
+//  ./SigMFFileWriter.exe
 
 
-// g++ -I../include SigMFFileWritter.cpp ../src/IcomIQPort.cpp -o SigMFFileWritter.exe -L ../libs -lftd3xx
-//  ./WriteToFile.exe
 
-
-#include <windows.h>
 #include <Lmcons.h>
 
 #include <iostream>
@@ -28,27 +27,39 @@
 #include <locale>
 #include <codecvt> // Required for std::codecvt_utf8
 
-#include "IcomIQPort.hpp"
+// logging functions
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>// Required for color console logging
+#include <spdlog/fmt/ranges.h> // Required for vector support
+#include <spdlog/fmt/bin_to_hex.h> // format vector of bytes to hex values
 
+#include "IcomIQPort.hpp"
+#include "IcomIQStream.hpp"
+
+#include <windows.h>
 #include "version.h"
+
 
 
 namespace fs = std::filesystem;
 
 #define DEFAULT_PORT_STR "1234"
 
-const uint8_t mainVFO = 0x00;
-const uint8_t subVFO = 0x01;
+//const uint8_t mainVFO = 0x00;
+//const uint8_t subVFO = 0x01;
 
 int pass_count = 0;
 int fail_count = 0;
 int total_count = 0;
 
+std::shared_ptr<spdlog::logger> consoleLog;
 
-
+/*
 size_t sample_size = 4; // bytes
 size_t num_samples_per_buff = 1024; // samples per read block
 size_t num_buffers = 16;  //number of buffers
+*/
 
 using json = nlohmann::json;
 
@@ -170,13 +181,8 @@ bool isLittleEndian() {
         return false; // Big-Endian
     }
 }	
-//const std::string& filename("./asciicomplexwrite.data");
-std::ofstream ofs;
-// Define a large buffer size
-const size_t WRBUFFER_SIZE = 64 * 1024; // 64 KB
 
-std::string buffer;
-//buffer.reserve(WRBUFFER_SIZE); // Pre-allocate buffer capacity
+
 
 std::string getMetaFileName(std::string fileName)
 {
@@ -208,7 +214,8 @@ void getMetaData( std::string datatype, int	sample_rate, uint8_t vfo, std::strin
 	metaParameters.version = VERSION_SIGMFFILEWRITTER;
 	metaParameters.dataFile = filename_with_ext.string();
 }
-	
+
+/*
 void write_complex_data(const std::vector<std::complex<short>>& data, std::string format)
 {
 	const float norm = 32767.0f;
@@ -288,7 +295,7 @@ void write_complex_data(const std::vector<std::complex<short>>& data, std::strin
 	}
 			
 }
-
+*/
 void usage(void)
 {
 	printf("SigMFFileWrite for the IC7610. Version %s\n\n", VERSION_SIGMFFILEWRITTER);
@@ -303,9 +310,42 @@ void usage(void)
 	exit(1);
 }
 
+/*
 void writeMetaData(std::string fileName) 
 {
 	
+}
+*/
+
+/**
+ * @brief Initializes and returns a console logger.
+ * @param name The unique name for the logger.
+ * @return std::shared_ptr<spdlog::logger> Pointer to the created logger.
+ */
+std::shared_ptr<spdlog::logger> getlogger(const std::string& name = " main_logger") {
+    // Check if the logger already exists in the global registry to avoid duplicates
+    auto main_logger= spdlog::get(name);
+    
+    if (!main_logger) {
+        // 1. Create a color multi-threaded console logger named "mainconsoleLog"
+        main_logger = spdlog::stdout_color_mt(name);
+		//spdlog::register_logger(main_logger);
+
+        // 2. Set a custom pattern (e.g., [Timestamp] [LoggerName] [Level] Message)
+       main_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v");
+
+#ifdef DEBUG
+        // 3. Set the log level to debug for this specific logger
+        // Note: You must also ensure SPDLOG_ACTIVE_LEVEL is set if using macros, if DEBUG define
+		main_logger->info("Setting logger to debug mode. Logger name = {}", "main_logger");
+        main_logger->set_level(spdlog::level::debug);
+#endif
+
+        // 4. Set this as the default logger so spdlog::info/debug calls use it
+        spdlog::set_default_logger(main_logger);
+		
+    }
+    return main_logger;
 }
 
 int main(int argc, char *argv[]) {
@@ -317,6 +357,16 @@ int main(int argc, char *argv[]) {
 	uint8_t vfo = mainVFO;
 	int interval = 1;	//sample interval in minutes
     const char *options = ":f:g:t:v:h";
+
+	 // 1. Create a thread-safe color console logger
+    // Use _mt surffix for multi-threaded safety
+    consoleLog = getlogger();
+
+    consoleLog->info("create boost asio context");
+    asio::io_context ctx;
+
+
+	consoleLog->info("Process Options");
 	
     while ((c = getopt(argc, argv, options)) != -1) {
         switch (c) {
@@ -324,17 +374,18 @@ int main(int argc, char *argv[]) {
             case 'f':{
                 // optarg points to the argument for -f
 				frequency = (uint32_t)atof(optarg);
-                std::cout << "Option -f specified with value: " << frequency << std::endl;
+				consoleLog->debug("Option -f (frequency) specified with value: {}", frequency);
 			break;}
             case 'g':{
                 // optarg points to the argument for -f
 				gain = (int)(atof(optarg) * 10);
-                std::cout << "Option -g specified with value : " << gain << " in dB/10"<< std::endl;
+				consoleLog->debug("Option -g (gain) specified with value: {}", gain);
 			break; }
             case 'i':{
+				
                 // optarg points to the argument for -f
 				interval = (int)(atof(optarg));
-                std::cout << "Option -i specified with value : " << interval << " in minutes"<< std::endl;
+				consoleLog->debug("Option -i (interval) specified with value: {} min, {} secinds", interval, (interval*60));
 			break; }
             case 't':{
                 // optarg points to the argument for -t CS16
@@ -347,7 +398,7 @@ int main(int argc, char *argv[]) {
 				} else if (strcmp(optarg, "CF64") == 0) {
 					dataType = "CF64";
 				}
-                std::cout << "Option -t specified with value : " << dataType << std::endl;
+				consoleLog->debug("Option -t (dataTpye) specified with value: {}", dataType);
 			break;}
             case 'v': {
                 // optarg points to the argument for -v
@@ -359,7 +410,7 @@ int main(int argc, char *argv[]) {
 				} else {
 					vfo = mainVFO;
 				}
-                std::cout << "Option -v specified with value : " << vfoName << std::endl;
+				consoleLog->debug("Option -v (vfo) specified with value: {}", vfoName);
 			break; }
             case 'h': {
                 usage();
@@ -385,146 +436,110 @@ int main(int argc, char *argv[]) {
     //Process non-option arguments (operands)
 	if (optind == argc) {
 		// missing file name
-		std::cout << "output file path required!" << std::endl;
+		consoleLog->error("output file path required!");
 		usage();
 	} else if ((argc - optind) > 1) {	
-		std::cout << "onlu a single output file is allowed!" << std::endl;
+		consoleLog->error("only one ouput file path is allowed!");
 		usage();		
 	} else {
 		filename = argv[optind];
-		std::cout << "File Path: " << filename << "\n";
+		consoleLog->debug("Output file path: {}:",filename);
 	}
 	
 	if (frequency == 0) {
-		std::cout << "using current rafio frequency" << std::endl;
+		consoleLog->debug("Using current radio frequency");
 	} else {
-		std::cout << "will set frequency = " << frequency << " Hz." << std::endl;
+		consoleLog->debug("will set frequency to: {} Hz", frequency);
 	}
 	
-	std::cout << " dataType = " << dataType << std::endl;
+
 	if (dataType.empty()) {
-		printf(" dataType = empty \n");
 		dataType = "CS16";
-		std::cout << "using CS16 data format" << std::endl;
+		consoleLog->debug("Datatype not defined using default : {}",dataType);
 	} else {
-		std::cout << "using " << dataType << " for data format" << std::endl;
+		consoleLog->debug("Using dataType: {}", dataType);
 	}
-	std::cout << ((vfo == mainVFO)? "main" : "sub") << std::endl;
 
-    ofs.open(filename, std::ios::out | std::ios::trunc);
-    if (!ofs.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return(1);
-    }
-    // Disable synchronization with C standard streams and turn off automatic flushing for speed
-    ofs.sync_with_stdio(false);
-    ofs.tie(nullptr);
+	consoleLog->debug("vfo: {}", ((vfo == mainVFO)? "main" : "sub"));
 
-	printf("Open IQ Port\n");
-	std::vector<uint8_t> command = {0x1a, 0x0b}; // iq Enable 
-		
-	printf("Find, Connect and Activate Highspeed USB Port : ");
+	// end of option proce3ssing
+
+
+	std::vector<uint8_t> command = {0x1a, 0x0b}; // iq Enable 	
+	
+	consoleLog->info("Find, Connect and Activate Highspeed USB Port : ");
 	std::string deviceSerialNum = IcomIQPort::getDeviceSerialNum();
-	IcomIQPort iqPort;
-	//iqPort.init(serialNum) ;
-	iqPort.init(deviceSerialNum) ;
-	if (iqPort.isOpen())
-	{
-		printf("iqPort is open \n");
-		int received_bytes = 0;
-		std::vector<uint8_t> reply;
-		received_bytes = iqPort.icomIQCommand(command, reply);
+	consoleLog->info("USB Device Serial Number: {}", deviceSerialNum);
+    consoleLog->info("Init ftdi to disk  output: {}", filename);
+    // 1. Open device (Example using index 0)
 
-		if (received_bytes > 0) {
-			printf(" pass. result = %d\n", received_bytes);
-			//print_vector(reply);
-		} else
-		{
-			printf(" failed. \n");
-			printf("test aborted \n");
-			exit(1);
-		}
-	} else {
-		printf("Port Not Open - abort\n");
-		exit(2);
-	}
+    // 2. Start the async manager
+    consoleLog->info("Init ftdi to disk  output: {}", filename);
+	auto writer = std::make_shared<IcomIQPortStream>(ctx, deviceSerialNum, filename);
+
+    consoleLog->info("Start vfo: {}", ((vfo == mainVFO)?"mainVFO" : "subVFO"));
+
+
+
 	
 	// get radio parameters
 	if (frequency > 0) {	
-		int freq = iqPort.iqSetFrequency(vfo, frequency);		
+		int freq = writer->iqSetFrequency(vfo, frequency);		
 	} else {
-		frequency;
+		frequency = writer->iqGetFrequency(vfo);
 	}
 	// set gain 
 	if (gain == INT_MIN) {
-		std::cout << "using current radio gain (10.0 dB)" << std::endl;
-		gain = iqPort.iqGetRFGain(vfo);
+		gain = writer->iqGetRFGain(vfo);
+		SPDLOG_LOGGER_DEBUG(consoleLog, "Icom7610stream using current gain {} db", ((float)gain/10.0)  );
 	} else {
-		std::cout << "will set radio gain to " << ((float)gain/10.0) << " dB" <<std::endl;
+		SPDLOG_LOGGER_DEBUG(consoleLog, "Icom7610stream setting gain to {}} db", ((float)gain/10.0)  );
 		// tbd db to gain converter
-		gain = iqPort.iqGetRFGain(vfo);
+		gain = writer->iqGetRFGain(vfo);
 	}	
-	printf("Set timeout to 10 Seconds\n");
-	int timeout = 5000; // timeout in ms -> 5 seconds
-	iqPort.setTimeout(IQ_IN, timeout); 
+	consoleLog->info( "Set Icom7610stream port timeout to 10 sec");
+	int timeout = 10000; // timeout in ms -> 5 seconds
+	writer->setTimeout(IQ_IN, timeout); 
 
 	int loop_count = 0;
 	int numSamples = 1024;
 	int total_samples = 0;
-	buffer.reserve(WRBUFFER_SIZE); // Pre-allocate buffer capacity
-	
+	//buffer.reserve(WRBUFFER_SIZE); // Pre-allocate buffer capacity
+	consoleLog->info(" getting meta data");
 	getMetaData( dataType, 1920000, vfo, filename);
 	// Note we want to allow multiple capture n the future, currently only a single capture is allowed 
 	// capture parameters
-	
+	consoleLog->info("get capture parameters");
 	capture_params cap_data;
-	cap_data.frequency = iqPort.iqGetFrequency(vfo);
-	cap_data.RFGain = iqPort.iqGetRFGain(vfo);
+	cap_data.frequency = writer->iqGetFrequency(vfo);
+	cap_data.RFGain = writer->iqGetRFGain(vfo);
 	cap_data.Antenna = "RX";
-	cap_data.PreampStatus = iqPort.iqGetPreAmpStatus(vfo);
-	cap_data.AttenuatorSettings = iqPort.iqGetAttenuatorSettings(vfo);
-	cap_data.DIGI_SEL = iqPort.iqGetDIGI_SEL_Status(vfo)? "On" : "Off";
-	cap_data.IPPlus = iqPort.iqGetIP_Status(vfo)? "On" : "Off";
+	cap_data.PreampStatus = writer->iqGetPreAmpStatus(vfo);
+	cap_data.AttenuatorSettings = writer->iqGetAttenuatorSettings(vfo);
+	cap_data.DIGI_SEL = writer->iqGetDIGI_SEL_Status(vfo)? "On" : "Off";
+	cap_data.IPPlus = writer->iqGetIP_Status(vfo)? "On" : "Off";
 	cap_data.duration = interval;
 	cap_data.startTime = getDateTime();
 	
 	const std::chrono::minutes duration(interval);
 	auto start_time = std::chrono::steady_clock::now();
 	auto start = std::chrono::high_resolution_clock::now();
-	buffer.reserve(WRBUFFER_SIZE); // Pre-allocate buffer capacity
-	iqPort.iqAsyncStart(vfo);
-	while((std::chrono::steady_clock::now() - start_time ) < duration) 
-	//while( loop_count < 100)
-	{
-		if ((loop_count % 10000) == 0){
-			printf(" total samples = %d\n", total_samples);
-		}
-		std::vector<std::complex<short>> buf(numSamples);
-		//printf("calling iqPort.iqReadBuf() \n");
-		int samples_read = iqPort.iqReadBuf( buf.data(), buf.size());
-		//printf(" samples read = %d \n", samples_read);
 
-		//printf("return  iqPort.iqReadBuf(), samples_read = %d\n", samples_read);
-		write_complex_data(buf, dataType);
-		total_samples += samples_read;
-		loop_count++;
-	}
-	printf("loop complete\n");
-	auto end = std::chrono::high_resolution_clock::now();
-	iqPort.iqAsyncStop();
-	int remaining = iqPort.iqGetSizeOfAvailableData();
-	std::vector<std::complex<short>> buf(remaining);
-	int samples_read = iqPort.iqReadBuf( buf.data(), buf.size());
-	write_complex_data(buf, dataType);
-	total_samples += samples_read;
-	iqPort.iqClearReadBuf();
+
+	// start the pipe:
+	consoleLog->info("Starting ReadPipe");
+    writer->start(vfo);
+
+    // 3. Run for 30 seconds
+    //ctx.run_for(std::chrono::seconds(300));
+	unsigned int waitTime = interval*60;
+	consoleLog->info("waiting for {} seconds.", waitTime);
+    ctx.run_for(std::chrono::seconds(interval*60));
+    consoleLog->info("Total Bytes read = {}", writer->getReadTotal());
+    consoleLog->info("Total Bytes written = {}", writer->getWriteTotal());
 	
-	ofs.flush();
-	ofs.close();
-	auto time_duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	
-	cap_data.totalSamples = total_samples;
-	cap_data.executionTime = (float)(time_duration.count()/1000000.0);
+	cap_data.totalSamples = writer->getReadTotal()/4;
+	cap_data.executionTime = interval * 60;
 	
 	// add the capture dataset to the metaParameters.
 	metaParameters.captures.push_back(cap_data);

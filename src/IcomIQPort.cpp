@@ -1,8 +1,8 @@
   
 
 
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
-#include <spdlog/spdlog.h>
+
+#include <spdlog/fmt/bin_to_hex.h> // format vector of bytes to hex values
 
 #include "IcomIQPort.hpp"
 #include <complex>
@@ -25,7 +25,8 @@ IcomIQPort::IcomIQPort()
 	_IPPlus = false;
 	_DIGI_SEL = false;
 	//iqBuffer_ (16384);
-	_logger = spdlog::get("main_logger");
+	 _logger = spdlog::default_logger();
+
 }
 
 void IcomIQPort::init(std::string deviceSerialNum, bool isStream)
@@ -262,7 +263,7 @@ void IcomIQPort::setTimeout(uint8_t channelID, int timeOut)
 		{
 			_dataTimeout = timeOut;
 		} else {
-			if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Set timeout on Data Channel  {:x} failed status= {}}\n", channelID, ftStatus);}
+			if (_logger) {SPDLOG_LOGGER_DEBUG(_logger, "Set timeout on Data Channel  {:x} failed status= {}", channelID, ftStatus);}
 			//fprintf(stderr,"Set timeout on Data Channel  %0x failed status= %ld\n", channelID, ftStatus);			
 			// if set was unsuccessful, do not update _timeout value
 		}

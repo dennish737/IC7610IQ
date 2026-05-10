@@ -37,6 +37,7 @@
 #define IC7610_RX_PAMP2_MAX_DB 16
 #define IC7610_RX_AMP_MAX_DB 0
 
+/* moved to IcomIQStream*/
 enum class IC7610FormatTypes : int{
 	IC7610_INVALID,
 	IC7610_SHORT,

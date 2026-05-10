@@ -82,6 +82,14 @@
 #include <windows.h>
 #include <unistd.h> // For usleep
 
+
+// logging functions
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>// Required for color console logging
+#include <spdlog/fmt/ranges.h> // Required for vector support
+#include <spdlog/fmt/bin_to_hex.h> // format vector of bytes to hex values
+
 #include "BlockingRingBuffer.hpp"
 
 #include "version.h"
